@@ -106,7 +106,13 @@ async def generate_embeddings(images_buffer, filename):
         ("images", (f"{filename}_{i}.png", img, "image/png"))
         for i, img in enumerate(images_buffer)
     ]
-    return await get_embeddings_from_httpx(images_request, endpoint="embed_image")
+    try:
+        embeddings = await get_embeddings_from_httpx(images_request, endpoint="embed_image")
+        logger.info(f"Generated embeddings for {filename} with {len(embeddings)} vectors")
+        return embeddings
+    except Exception as e:
+        logger.error(f"Failed to generate embeddings for {filename}: {str(e)}")
+        raise
 
 
 async def insert_to_milvus(collection_name, embeddings, image_ids, file_id):

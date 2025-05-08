@@ -4,6 +4,8 @@ import numpy as np
 from typing import Literal
 
 from tenacity import retry, stop_after_attempt, wait_exponential
+from app.core.logging import logger
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=10)
@@ -31,6 +33,11 @@ async def get_embeddings_from_httpx(
             response.raise_for_status()
             return np.array(response.json()["embeddings"])
         except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP embedding request failed: {str(e)}")
             raise Exception(f"HTTP request failed: {e}")
         except json.JSONDecodeError as e:
-            raise Exception(f"HTTP request failed: {e}")
+            logger.error(f"Failed to parse embedding response: {str(e)}")
+            raise Exception(f"Failed to parse response: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error in embedding request: {str(e)}")
+            raise

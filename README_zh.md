@@ -304,3 +304,45 @@ npm run dev
 ---
 
 > _LAYRA 看到 OCR 无法识别的内容，它像我们一样理解文档——从视觉、结构到整体理解。_
+
+# 环境变量配置
+
+为了正确配置和运行应用程序，请在项目根目录创建一个 `.env` 文件并设置以下环境变量：
+
+```
+# 数据库配置
+APP_DB_URL="mysql+asyncmy://username:password@localhost/dbname"
+APP_MONGODB_URL="localhost:27017"
+APP_MONGODB_DB="chat_mongodb"
+APP_MONGODB_ROOT_USERNAME="testuser"
+APP_MONGODB_ROOT_PASSWORD="testpassword"
+
+# Redis配置
+APP_REDIS_URL="localhost:6379"
+APP_REDIS_PASSWORD="redisdspw"
+
+# JWT 配置
+APP_SECRET_KEY="your_secret_key"
+APP_ALGORITHM="HS256"
+
+# MinIO 配置
+APP_MINIO_URL="http://localhost:9110"
+APP_MINIO_ACCESS_KEY="your_access_key"
+APP_MINIO_SECRET_KEY="your_secret_key"
+APP_MINIO_BUCKET_NAME="ai-chat"
+
+# Milvus 配置
+APP_MILVUS_URI="http://127.0.0.1:19530"
+
+# 本地模型路径 (仅在本地模型模式下使用)
+APP_COLBERT_MODEL_PATH="/path/to/your/local/model"
+
+# API 嵌入服务配置 (仅在API模式下使用)
+APP_USE_API_EMBEDDING="true"  # 设置为true启用API模式，false使用本地模型
+APP_EMBEDDING_API_URL="https://api.your-embedding-service.com"  # API服务URL
+APP_EMBEDDING_API_KEY="your-api-key"  # API密钥
+APP_EMBEDDING_MODEL_NAME="text-embedding-model"  # 文本嵌入模型名称
+APP_IMAGE_EMBEDDING_MODEL_NAME="image-embedding-model"  # 图像嵌入模型名称
+```
+
+请根据您的实际环境替换上述值。

@@ -1,0 +1,140 @@
+name: LAYRA CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      mongodb:
+        image: mongo
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: testuser
+          MONGO_INITDB_ROOT_PASSWORD: testpassword
+        options: --health-cmd="mongosh --quiet --eval 'db.runCommand({ping:1})'" --health-interval=10s --health-timeout=5s --health-retries=3
+          
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: layra_test
+          MYSQL_USER: layra
+          MYSQL_PASSWORD: layra
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      minio:
+        image: minio/minio
+        ports:
+          - 9110:9110
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: --command="server /data --console-address :9111 --address :9110"
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+      
+      - name: 设置Python环境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: 安装系统依赖
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      
+      - name: 安装Python依赖
+        run: pip install -r requirements.txt
+      
+      - name: 下载模型
+        run: |
+          git lfs install
+          git clone https://hf-mirror.com/vidore/colqwen2.5-base
+          git clone https://hf-mirror.com/vidore/colqwen2.5-v0.2
+      
+      - name: 运行测试
+        env:
+          APP_DB_URL: "mysql+asyncmy://layra:layra@localhost/layra_test"
+          APP_MONGODB_URL: "localhost:27017"
+          APP_MONGODB_DB: "chat_mongodb"
+          APP_MONGODB_ROOT_USERNAME: "testuser"
+          APP_MONGODB_ROOT_PASSWORD: "testpassword"
+          APP_REDIS_URL: "localhost:6379"
+          APP_REDIS_PASSWORD: ""
+          APP_SECRET_KEY: "test_secret_key"
+          APP_ALGORITHM: "HS256"
+          APP_MINIO_URL: "http://localhost:9110"
+          APP_MINIO_ACCESS_KEY: "minioadmin"
+          APP_MINIO_SECRET_KEY: "minioadmin"
+          APP_MINIO_BUCKET_NAME: "ai-chat"
+          APP_MILVUS_URI: "http://127.0.0.1:19530"
+          APP_COLBERT_MODEL_PATH: "./colqwen2.5-v0.2"
+          APP_USE_API_EMBEDDING: "false"
+        run: pytest
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: 登录Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: 构建并推送后端镜像
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/layra-backend:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/layra-backend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/layra-backend:buildcache,mode=max
+      
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+      
+      - name: 构建前端
+        run: |
+          cd web
+          npm install
+          npm run build
+      
+      - name: 构建并推送前端镜像
+        uses: docker/build-push-action@v4
+        with:
+          context: ./web
+          file: ./web/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/layra-frontend:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/layra-frontend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/layra-frontend:buildcache,mode=max 

@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     minio_bucket_name: str = "ai-chat"  # 需要上传的桶的名称
     milvus_uri:str ="http://127.0.0.1:19530"
     colbert_model_path:str = "/home/liwei/ai/colqwen2.5-v0.2"
+    
+    # 新增API服务配置
+    use_api_embedding: bool = True  # 是否使用API嵌入服务
+    embedding_api_url: str = "https://api.embedding-service.com"  # 嵌入API服务URL
+    embedding_api_key: str = "your-api-key-here"  # 嵌入API密钥
+    embedding_model_name: str = "text-embedding-model"  # 文本嵌入模型名称
+    image_embedding_model_name: str = "image-embedding-model"  # 图像嵌入模型名称
 
     class Config:
         env_file = ".env"
