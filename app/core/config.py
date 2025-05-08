@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     minio_bucket_name: str = "ai-chat"  # 需要上传的桶的名称
     milvus_uri: str = "http://127.0.0.1:19530"
     colbert_model_path: str = "/path/to/model"
+    mysql_root_password: str = "password"
+    mysql_password: str = "password"
+    mysql_port: int = 3306
     
     # 新增API服务配置
     use_api_embedding: bool = True  # 是否使用API嵌入服务
@@ -48,6 +51,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_prefix = ""  # 移除APP_前缀
+        extra = "ignore"  # 忽略未在模型中定义的额外环境变量
 
 
 settings = Settings()

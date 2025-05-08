@@ -75,8 +75,7 @@ jobs:
       
       - name: 将文件传输到服务器
         run: |
-          # 创建远程目录
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p /opt/layra"
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
           
           # 只传输docker-compose.yml文件，使用服务器上的.env
           scp docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/layra/

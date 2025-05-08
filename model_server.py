@@ -37,7 +37,7 @@ async def embed_image(images: List[UploadFile] = File(...)):
     if settings.use_api_embedding:
         return {"embeddings": await service.process_image(pil_images)}
     else:
-    return {"embeddings": service.process_image(pil_images)}
+        return {"embeddings": service.process_image(pil_images)}
 
 
 if __name__ == "__main__":

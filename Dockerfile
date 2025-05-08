@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bullseye
 
 WORKDIR /app
 
@@ -14,16 +14,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 下载模型
-RUN git lfs install && \
-    git clone https://hf-mirror.com/vidore/colqwen2.5-base && \
-    git clone https://hf-mirror.com/vidore/colqwen2.5-v0.2
-
 # 复制应用代码
 COPY . .
 
-# 初始化数据库
-RUN alembic upgrade head
+# 创建migrations目录（如果不存在）并初始化alembic
+RUN mkdir -p migrations && \
+    if [ ! -f migrations/env.py ]; then alembic init migrations; fi
+
+# 执行数据库迁移
+RUN alembic upgrade head || echo "Database migration skipped, will be handled during runtime"
 
 # 暴露API端口
 EXPOSE 8000

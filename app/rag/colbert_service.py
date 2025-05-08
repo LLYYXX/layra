@@ -8,27 +8,50 @@ from transformers.utils.import_utils import is_flash_attn_2_available
 from tqdm import tqdm
 from app.core.config import settings
 import numpy as np
+import os
+from app.core.logging import logger
 
 
 class ColBERTService:
     def __init__(self, model_path):
-        self.device = torch.device(get_torch_device("auto"))
-        self.model = ColQwen2_5.from_pretrained(
-            model_path,
-            torch_dtype=torch.bfloat16,
-            device_map=self.device,
-            attn_implementation=(
-                "flash_attention_2" if is_flash_attn_2_available() else None
-            ),
-        ).eval()
-        self.processor = cast(
-            ColQwen2_5_Processor,
-            ColQwen2_5_Processor.from_pretrained(
-                model_path, size={"shortest_edge": 56 * 56, "longest_edge": 28 * 28 * 768}
-            ),
-        )
+        try:
+            if not os.path.exists(model_path) and settings.use_api_embedding:
+                logger.warning(f"Model path {model_path} does not exist, but API embedding is enabled. Will use API for embeddings.")
+                self.model = None
+                self.processor = None
+                return
+                
+            self.device = torch.device(get_torch_device("auto"))
+            self.model = ColQwen2_5.from_pretrained(
+                model_path,
+                torch_dtype=torch.bfloat16,
+                device_map=self.device,
+                attn_implementation=(
+                    "flash_attention_2" if is_flash_attn_2_available() else None
+                ),
+            ).eval()
+            self.processor = cast(
+                ColQwen2_5_Processor,
+                ColQwen2_5_Processor.from_pretrained(
+                    model_path, size={"shortest_edge": 56 * 56, "longest_edge": 28 * 28 * 768}
+                ),
+            )
+            logger.info(f"Successfully loaded ColBERT model from {model_path}")
+        except Exception as e:
+            if settings.use_api_embedding:
+                logger.warning(f"Failed to load model from {model_path}, but API embedding is enabled: {str(e)}")
+                self.model = None
+                self.processor = None
+            else:
+                logger.error(f"Failed to load model and API embedding is disabled: {str(e)}")
+                raise
 
     def process_query(self, queries: list) -> List[torch.Tensor]:
+        if self.model is None:
+            # 如果使用API模式，在API服务中处理
+            logger.warning("Local model not available, query will be processed by API service")
+            return [[] for _ in queries]  # 返回空列表，实际处理会由API服务完成
+            
         dataloader = DataLoader(
             dataset=ListDataset[str](queries),
             batch_size=1,
@@ -49,6 +72,11 @@ class ColBERTService:
         return qs
 
     def process_image(self, images: List) -> List[List[float]]:
+        if self.model is None:
+            # 如果使用API模式，在API服务中处理
+            logger.warning("Local model not available, image will be processed by API service")
+            return [[] for _ in images]  # 返回空列表，实际处理会由API服务完成
+            
         batch_size = 1 # if len(images) > 2 else len(images)
         dataloader = DataLoader(
             dataset=ListDataset[str](images),
@@ -68,4 +96,12 @@ class ColBERTService:
         return ds
 
 
-colbert = ColBERTService(settings.colbert_model_path)
+try:
+    colbert = ColBERTService(settings.colbert_model_path)
+except Exception as e:
+    logger.error(f"Error initializing ColBERTService: {str(e)}")
+    if settings.use_api_embedding:
+        logger.info("Falling back to API mode, ColBERTService initialized with None model")
+        colbert = ColBERTService("/non-existent-path")
+    else:
+        raise

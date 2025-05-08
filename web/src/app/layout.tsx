@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+// 不使用Google Fonts，改用系统字体
+// import { Inter } from "next/font/google";
+// const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "LAYRA",
@@ -16,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className}`}>
+      <body className="font-sans">
         <div className="">
           {/* <CityBackground /> */}
         </div>
