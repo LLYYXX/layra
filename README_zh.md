@@ -317,67 +317,6 @@ cp env.example .env
 vim .env
 ```
 
-环境变量说明：
-
-```
-# 基础配置
-MAX_WORKERS=10
-LOG_LEVEL=INFO
-LOG_FILE=layra.log
-DEBUG_MODE=true
-
-# 数据库配置
-DB_URL=mysql+asyncmy://mysqluser:mysql577715@localhost/imagedb
-DB_POOL_SIZE=10
-DB_MAX_OVERFLOW=20
-
-# MongoDB配置
-MONGODB_URL=localhost:27017
-MONGODB_DB=mongodb
-MONGODB_ROOT_USERNAME=mongouser
-MONGODB_ROOT_PASSWORD=mongo577715
-MONGODB_POOL_SIZE=100
-MONGODB_MIN_POOL_SIZE=10
-
-# Redis配置
-REDIS_URL=localhost:6379
-REDIS_PASSWORD=redis577715
-REDIS_TOKEN_DB=0
-REDIS_TASK_DB=1
-REDIS_LOCK_DB=2
-
-# JWT 配置
-SECRET_KEY=TestCodeForLLMProject
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=36000
-
-# MinIO 配置
-MINIO_URL=http://127.0.0.1:9110
-MINIO_ACCESS_KEY=miniouser
-MINIO_SECRET_KEY=minio577715
-MINIO_BUCKET_NAME=ai-chat
-
-# Milvus 配置
-MILVUS_URI=http://127.0.0.1:19530
-
-# Kafka配置
-KAFKA_BROKER_URL=localhost:9094
-KAFKA_TOPIC=task_generation
-KAFKA_GROUP_ID=task_consumer_group
-
-# 本地模型路径 (仅在USE_API_EMBEDDING=false时使用)
-COLBERT_MODEL_PATH=/home/liwei/ai/colqwen2.5-v0.2
-
-# API 嵌入服务配置 (仅在USE_API_EMBEDDING=true时使用)
-USE_API_EMBEDDING=true
-EMBEDDING_API_URL=https://openrouter.ai/api/v1
-EMBEDDING_API_KEY=your-api-key
-EMBEDDING_MODEL_NAME=openai/text-embedding-3-large
-IMAGE_EMBEDDING_MODEL_NAME=openai/gpt-4o
-SITE_URL=https://layra.app
-SITE_NAME=LAYRA Document RAG
-```
-
 ## 注意事项
 
 1. **Docker Compose 部署**：

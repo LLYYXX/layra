@@ -11,6 +11,7 @@ services:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./initdb/init-mysql.sql:/docker-entrypoint-initdb.d/init-mysql.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 5s
@@ -21,10 +22,12 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: mongouser
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: mongodb
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      - ./initdb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s

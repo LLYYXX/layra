@@ -3,8 +3,13 @@ import { BaseUsed, ModelConfig } from "@/types/types";
 import axios, { AxiosProgressEvent } from "axios";
 import Cookies from "js-cookie";
 
+// 在Docker Compose环境中，前端容器应该通过容器名称访问后端
+// 而在本地开发环境中，使用localhost或127.0.0.1
 const api = axios.create({
-  baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}`,
+  // 如果环境变量存在则使用，否则使用默认值
+  baseURL: process.env.NEXT_PUBLIC_API_URL 
+    ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1` 
+    : "/api/v1", // 在生产环境中使用相对路径，利用Next.js的API代理功能
 });
 
 api.interceptors.request.use((config) => {

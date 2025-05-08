@@ -134,7 +134,7 @@ migrations/
 docker/volumes/
 
 # Environments
-#.env
+.env
 .venv
 env/
 venv/
@@ -178,6 +178,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
-# env
-.env

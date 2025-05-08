@@ -80,7 +80,7 @@ GitHub Actions工作流程定义在`.github/workflows/ci-cd.yml`文件中，包�
 - MinIO配置参数：
   - MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
 - 应用配置参数：
-  - APP_SECRET_KEY
+  - SECRET_KEY
 
 ## 故障排除
 

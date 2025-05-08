@@ -60,14 +60,32 @@ class MongoDB:
             raise
 
     async def connect(self):
-        self.client = AsyncIOMotorClient(
-            f"mongodb://{settings.mongodb_root_username}:{settings.mongodb_root_password}@{settings.mongodb_url}",
-            maxPoolSize=settings.mongodb_pool_size,  # 设置最大连接池大小
-            minPoolSize=settings.mongodb_min_pool_size,  # 设置最小连接池大小
-        )
-        self.db = self.client[settings.mongodb_db]
-        # 添加索引优化（首次连接时执行）
-        await self._create_indexes()
+        try:
+            # 直接构建连接字符串，明确指定authSource
+            connection_string = f"mongodb://{settings.mongodb_root_username}:{settings.mongodb_root_password}@{settings.mongodb_url}/admin?authSource=admin"
+            
+            logger.info(f"正在连接MongoDB: {settings.mongodb_url} (用户: {settings.mongodb_root_username})")
+            
+            # 简化连接参数
+            self.client = AsyncIOMotorClient(
+                connection_string,
+                serverSelectionTimeoutMS=5000  # 5秒超时
+            )
+            
+            # 验证连接
+            await self.client.admin.command('ping')
+            logger.info("MongoDB连接成功")
+            
+            self.db = self.client[settings.mongodb_db]
+            
+            # 添加索引优化（首次连接时执行）
+            await self._create_indexes()
+        except Exception as e:
+            logger.error(f"MongoDB连接失败: {str(e)}")
+            # 不抛出异常，允许应用继续运行
+            # 但标记客户端为None，以便其他地方可以检查
+            self.client = None
+            self.db = None
 
     async def close(self):
         if self.client:

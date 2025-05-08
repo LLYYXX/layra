@@ -1,5 +1,8 @@
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
@@ -25,8 +28,13 @@ app = framework.get_app()
 
 # CORS settings
 origins = [
-    "*"
-]  # ["https://your-frontend-domain.com"],  # 建议生产环境中替换为具体的域名白名单
+    "http://localhost:3000",      # 本地前端开发服务器
+    "http://127.0.0.1:3000",      # 本地前端开发服务器（IP形式）
+    "http://frontend:3000",       # Docker Compose中的前端服务
+    "http://localhost:8000",      # 本地后端服务器
+    "http://127.0.0.1:8000",      # 本地后端服务器（IP形式）
+    "http://backend:8000",        # Docker Compose中的后端服务
+]  # 建议生产环境中替换为具体的域名白名单
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +44,55 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 添加全局异常处理
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    全局异常处理器，捕获所有未处理的异常
+    记录详细错误日志，但只向客户端返回简洁的错误信息
+    """
+    # 记录详细错误信息到日志
+    error_detail = f"Unhandled exception: {str(exc)}\n{traceback.format_exc()}"
+    logger.error(error_detail)
+    
+    # 向客户端返回简洁的错误信息
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "服务器内部错误，请联系我❤"},
+    )
+
+# 处理验证错误
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    处理请求验证错误，提供友好的中文错误信息
+    """
+    # 记录到日志
+    logger.warning(f"Request validation error: {exc.errors()}")
+    
+    # 格式化错误信息
+    error_messages = []
+    for error in exc.errors():
+        field = error.get("loc", ["未知字段"])[-1]
+        msg = error.get("msg", "验证错误")
+        error_messages.append(f"{field}: {msg}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={"detail": error_messages},
+    )
+
+# 处理HTTP异常
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """
+    处理HTTP异常，包括401、403、404等
+    """
+    logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,6 +100,19 @@ async def lifespan(app: FastAPI):
     logger.info("FastAPI Starting...")
     try:
         # 按顺序初始化各服务，错误时记录详细日志
+        # 验证MySQL连接
+        try:
+            from app.db.mysql_session import initialize_db
+            mysql_ok = await initialize_db()
+            if not mysql_ok:
+                logger.warning("MySQL初始化失败，应用可能无法正常工作")
+            else:
+                logger.info("MySQL初始化成功")
+        except Exception as e:
+            logger.error(f"MySQL初始化异常: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        # 连接MongoDB
         try:
             await mongodb.connect()
             logger.info("MongoDB connected successfully")

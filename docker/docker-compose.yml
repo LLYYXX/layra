@@ -1,4 +1,65 @@
 services:
+  # Milvus相关服务
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.18
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus-minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - milvus_minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.5.6
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+    - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "milvus-minio"
+
+  # 其他服务
   kafka:
     image: bitnami/kafka:3.8.0
     environment:
@@ -42,8 +103,16 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: mongouser  # 替换为你的用户名
       MONGO_INITDB_ROOT_PASSWORD: mongo577715  # 替换为你的密码
+      MONGO_INITDB_DATABASE: mongodb
     volumes:
       - mongo_data:/data/db  # 数据持久化
+      - ../initdb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb:27017/admin -u mongouser -p mongo577715 --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   redis:
     image: redis:7.2.5
@@ -52,9 +121,9 @@ services:
     command: ["redis-server", "--requirepass", "redis577715"]
 
   mysql:
-    image: mysql:9.0.1
+    image: mysql:8.0
     environment:
-      - MYSQL_ROOT_PASSWORD=mysql?577715
+      - MYSQL_ROOT_PASSWORD=mysql577715
       - MYSQL_DATABASE=imagedb
       - MYSQL_USER=mysqluser
       - MYSQL_PASSWORD=mysql577715
@@ -62,7 +131,32 @@ services:
       - '3306:3306'
     volumes:
       - mysql_data:/var/lib/mysql
+      - ../initdb/init-mysql.sql:/docker-entrypoint-initdb.d/init-mysql.sql
+      - ../initdb/init-alembic.sh:/docker-entrypoint-initdb.d/init-alembic.sh
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
   
+  # 数据库迁移服务
+  db-migration:
+    image: python:3.10-slim-bullseye
+    volumes:
+      - ../.:/app
+    working_dir: /app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: >
+      bash -c "
+        pip install -r requirements.txt &&
+        if [ ! -d migrations ]; then
+          alembic init migrations &&
+          cp env.py migrations/
+        fi &&
+        alembic revision --autogenerate -m 'Init MySQL' &&
+        alembic upgrade head
+      "
 
 volumes:
   kafka_data:
@@ -74,4 +168,10 @@ volumes:
   mysql_data:
     driver: local
   mongo_data:
+    driver: local
+  etcd_data:
+    driver: local
+  milvus_minio_data:
+    driver: local
+  milvus_data:
     driver: local
