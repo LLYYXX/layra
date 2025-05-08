@@ -170,7 +170,7 @@ class ChatService:
         send_messages = await replace_image_content(messages)
 
         client = AsyncOpenAI(
-            # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+            # API密钥从数据库配置获取，不再使用硬编码值
             api_key=api_key,
             base_url=model_url,
         )

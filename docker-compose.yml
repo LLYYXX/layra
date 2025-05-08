@@ -3,10 +3,10 @@ services:
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: mysql?577715
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
       MYSQL_DATABASE: imagedb
       MYSQL_USER: mysqluser
-      MYSQL_PASSWORD: mysql577715
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
     ports:
       - "3306:3306"
     volumes:
@@ -20,7 +20,7 @@ services:
     image: mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: mongouser
-      MONGO_INITDB_ROOT_PASSWORD: mongo577715
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password}
     ports:
       - "27017:27017"
     volumes:
@@ -36,11 +36,11 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
-    command: ["redis-server", "--requirepass", "redis577715"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-password}"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis577715", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-password}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -49,7 +49,7 @@ services:
     image: minio/minio
     environment:
       MINIO_ROOT_USER: miniouser
-      MINIO_ROOT_PASSWORD: minio577715
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-password}
     ports:
       - "9110:9110"
       - "9111:9111"
@@ -61,6 +61,33 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+
+  # Kafka服务
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,OUTSIDE://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
 
   milvus:
     image: milvusdb/milvus:v2.2.9
@@ -88,7 +115,7 @@ services:
       - ETCD_SNAPSHOT_COUNT=50000
     volumes:
       - etcd_data:/etcd
-    command: etcd --advertise-client-urls=http://127.0.0.1:2379 --listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    command: etcd --advertise-client-urls=http://etcd:2379 --listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
 
   # 后端API服务
   backend:
@@ -100,28 +127,29 @@ services:
     env_file:
       - ./.env
     environment:
-      DB_URL: "mysql+asyncmy://mysqluser:mysql577715@mysql/imagedb"
+      DB_URL: "mysql+asyncmy://mysqluser:${MYSQL_PASSWORD:-password}@mysql/imagedb"
       MONGODB_URL: "mongodb:27017"
       MONGODB_DB: "mongodb"
       MONGODB_ROOT_USERNAME: "mongouser"
-      MONGODB_ROOT_PASSWORD: "mongo577715"
+      MONGODB_ROOT_PASSWORD: "${MONGODB_ROOT_PASSWORD:-password}"
       REDIS_URL: "redis:6379"
-      REDIS_PASSWORD: "redis577715"
-      SECRET_KEY: "TestCodeForLLMProject"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-password}"
+      SECRET_KEY: "${SECRET_KEY:-your-secret-key-here}"
       ALGORITHM: "HS256"
       MINIO_URL: "http://minio:9110"
       MINIO_ACCESS_KEY: "miniouser"
-      MINIO_SECRET_KEY: "minio577715"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY:-password}"
       MINIO_BUCKET_NAME: "ai-chat"
       MILVUS_URI: "http://milvus:19530"
+      KAFKA_BROKER_URL: "kafka:9092"
       # OpenRouter配置 - API密钥从.env文件读取
-      USE_API_EMBEDDING: "true"
-      EMBEDDING_API_URL: "https://openrouter.ai/api/v1"
-      EMBEDDING_MODEL_NAME: "openai/text-embedding-3-large"
-      IMAGE_EMBEDDING_MODEL_NAME: "openai/gpt-4o"
+      USE_API_EMBEDDING: "${USE_API_EMBEDDING:-true}"
+      EMBEDDING_API_URL: "${EMBEDDING_API_URL:-https://openrouter.ai/api/v1}"
+      EMBEDDING_MODEL_NAME: "${EMBEDDING_MODEL_NAME:-qwen/qwen2.5-vl-32b-instruct}"
+      IMAGE_EMBEDDING_MODEL_NAME: "${IMAGE_EMBEDDING_MODEL_NAME:-qwen/qwen2.5-vl-32b-instruct}"
       # 以下为可选配置，不设置则不发送站点信息
-      # SITE_URL: "https://your-website.com"
-      # SITE_NAME: "Your App Name"
+      # SITE_URL: "${SITE_URL}"
+      # SITE_NAME: "${SITE_NAME}"
     depends_on:
       mysql:
         condition: service_healthy
@@ -133,6 +161,8 @@ services:
         condition: service_healthy
       milvus:
         condition: service_healthy
+      kafka:
+        condition: service_started
 
   # 模型服务器
   model_server:
@@ -162,4 +192,6 @@ volumes:
   mongodb_data:
   redis_data:
   minio_data:
-  etcd_data: 
+  etcd_data:
+  zookeeper_data:
+  kafka_data: 
