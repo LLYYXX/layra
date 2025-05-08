@@ -156,6 +156,9 @@ services:
       # 以下为可选配置，不设置则不发送站点信息
       # SITE_URL: "${SITE_URL}"
       # SITE_NAME: "${SITE_NAME}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       mysql:
         condition: service_healthy

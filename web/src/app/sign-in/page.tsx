@@ -24,6 +24,44 @@ const SignInPage = () => {
     setIsLogin(!isLogin);
   };
 
+  // 处理并翻译错误消息
+  const processErrorMessage = (err: any): string => {
+    // 如果有详细错误信息数组
+    if (err.detail && Array.isArray(err.detail)) {
+      const errors = err.detail.map((item: any) => {
+        // 根据错误类型和位置进行翻译
+        let fieldName = "";
+        if (item.loc && item.loc.length > 1) {
+          switch(item.loc[1]) {
+            case "email": fieldName = "邮箱"; break;
+            case "password": fieldName = "密码"; break;
+            case "username": fieldName = "用户名"; break;
+            default: fieldName = item.loc[1];
+          }
+        }
+
+        // 处理特定错误类型
+        if (item.type === "value_error") {
+          if (item.msg.includes("email address")) {
+            return `${fieldName}格式不正确: ${item.ctx?.reason || ""}`;
+          }
+        }
+
+        // 如果没有特殊处理，则返回原始消息
+        return `${fieldName}: ${item.msg}`;
+      });
+      return errors.join("\n");
+    }
+    
+    // 如果是字符串错误
+    if (typeof err === "string") {
+      return err;
+    }
+    
+    // 默认错误信息
+    return "操作失败，请稍后重试";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPending(true);
@@ -33,7 +71,7 @@ const SignInPage = () => {
         await loginUser(name, password);
         setShowAlert({
           show: true,
-          message: "Login Success!",
+          message: "登录成功！",
           type: "success",
         });
         // 获取 returnUrl 参数
@@ -43,7 +81,7 @@ const SignInPage = () => {
         await registerUser(name, email, password);
         setShowAlert({
           show: true,
-          message: "Sign-in Success!",
+          message: "注册成功！",
           type: "success",
         });
         setIsLogin(true);
@@ -51,12 +89,13 @@ const SignInPage = () => {
         const returnUrl = searchParams.get("returnUrl");
         router.push(returnUrl || "/"); // 登录成功后跳转到 returnUrl 或者首页
       }
-    } catch (err) {
+    } catch (err: any) {
       console.log(err);
-      setError("Invalid credentials");
+      const errorMessage = processErrorMessage(err);
+      setError(errorMessage);
       setShowAlert({
         show: true,
-        message: "Login/Sign-in Failed!",
+        message: isLogin ? "登录失败！" : "注册失败！\n" + errorMessage,
         type: "error",
       });
     } finally {
@@ -92,8 +131,14 @@ const SignInPage = () => {
         </h1>
 
         <h2 className="text-2xl font-bold text-center text-gray-700">
-          {isLogin ? "Login" : "Register"}
+          {isLogin ? "登录" : "注册"}
         </h2>
+
+        {error && (
+          <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
@@ -126,10 +171,11 @@ const SignInPage = () => {
               <input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                placeholder="邮箱暂不校验正确性"
                 required
                 className={`mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs focus:outline-hidden focus:border-2 focus:ring-indigo-500 focus:border-indigo-500
                      sm:text-sm`}
@@ -172,7 +218,7 @@ const SignInPage = () => {
         <div className="text-sm text-center">
           {isLogin ? (
             <p>
-              Don’t have an account?{" "}
+              Don&apos;t have an account?{" "}
               <button
                 onClick={toggleAuthMode}
                 className={`font-medium text-indigo-600 hover:text-indigo-500

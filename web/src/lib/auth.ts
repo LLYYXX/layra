@@ -38,7 +38,11 @@ export const registerUser = async (name:string, email: string, password: string)
   try {
     const { data } = await register(name, email, password);
     return data;
-  } catch (error) {
-    throw new Error("Register failed");
+  } catch (error: any) {
+    // 捕获并传递后端返回的详细错误信息
+    if (error.response && error.response.data) {
+      throw error.response.data;
+    }
+    throw new Error("注册失败");
   }
 };

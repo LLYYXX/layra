@@ -81,14 +81,15 @@ const KnowledgeBaseDetails: React.FC<KnowledgeBaseDetailsProps> = ({
   }, [loadFiles]);
 
   useEffect(() => {
-    if (searchKeyword === "") {
+    if (selectedBase) {
+      fetchFilesData(selectedBase);
       setLoad((prev) => !prev);
       setCurrentPage(1);
     } else {
       setSearchKeyword("");
       setCurrentPage(1);
     }
-  }, [selectedBase, setLoad]);
+  }, [selectedBase, setLoad, searchKeyword]);
 
   const handleSearch = (value: string) => {
     setSearchKeyword(value);

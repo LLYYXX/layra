@@ -18,13 +18,16 @@ from app.core.security import (
 from app.db.redis import redis
 from app.core.config import settings
 from app.db.mongo import MongoDB, get_mongo
+from app.core.logging import logger  # 导入日志记录器
 
 router = APIRouter()
 
 
 @router.get("/verify-token", response_model=TokenData)
 async def login_for_access_token(token: str = Depends(oauth2_scheme)):
-    return decode_access_token(token)
+    token_data = decode_access_token(token)
+    logger.info(f"Token验证: {token_data.username if token_data else 'Invalid token'}")
+    return token_data
 
 
 @router.post("/login", response_model=TokenSchema)
@@ -32,8 +35,10 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_mysql_session),
 ):
+    logger.info(f"用户尝试登录: {form_data.username}")
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        logger.warning(f"登录失败，用户名或密码不正确: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -55,6 +60,7 @@ async def login_for_access_token(
         access_token,
         ex=int(access_token_expires.total_seconds()),
     )
+    logger.info(f"用户登录成功: {user.username}")
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -68,9 +74,11 @@ async def register(
     db: AsyncSession = Depends(get_mysql_session),
     mongo: MongoDB = Depends(get_mongo),
 ):
+    logger.info(f"新用户注册请求: {user.username}, 邮箱: {user.email}")
     # Check if username or email already exists
     existing_user = await db.execute(select(User).where(User.username == user.username))
     if existing_user.scalars().first():
+        logger.warning(f"注册失败，用户名已存在: {user.username}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered",
@@ -78,6 +86,7 @@ async def register(
 
     existing_email = await db.execute(select(User).where(User.email == user.email))
     if existing_email.scalars().first():
+        logger.warning(f"注册失败，邮箱已注册: {user.email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
@@ -109,7 +118,8 @@ async def register(
         top_P=-1,
         top_K=-1,
     )
-
+    
+    logger.info(f"用户注册成功: {user.username}, ID: {db_user.id}")
     return UserResponse.model_validate(db_user)
 
 
@@ -117,7 +127,9 @@ async def register(
 async def logout(token: str = Depends(oauth2_scheme)):
     token_data = decode_access_token(token)
     if not token_data:
+        logger.warning("登出失败，无效的令牌")
         raise HTTPException(status_code=401, detail="Invalid token")
     redis_connection = await redis.get_token_connection()  # 获取 Redis 连接实例
     await redis_connection.delete(f"user:{token_data.username}")
+    logger.info(f"用户登出成功: {token_data.username}")
     return {"message": "Logged out successfully"}
