@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
   # 数据库服务
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-layra}
-      MYSQL_USER: ${MYSQL_USER:-layra}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-layra}
+      MYSQL_ROOT_PASSWORD: mysql?577715
+      MYSQL_DATABASE: imagedb
+      MYSQL_USER: mysqluser
+      MYSQL_PASSWORD: mysql577715
     ports:
       - "3306:3306"
     volumes:
@@ -21,8 +19,8 @@ services:
   mongodb:
     image: mongo
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-testuser}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-testpassword}
+      MONGO_INITDB_ROOT_USERNAME: mongouser
+      MONGO_INITDB_ROOT_PASSWORD: mongo577715
     ports:
       - "27017:27017"
     volumes:
@@ -38,10 +36,11 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
+    command: ["redis-server", "--requirepass", "redis577715"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "redis577715", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -49,8 +48,8 @@ services:
   minio:
     image: minio/minio
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: miniouser
+      MINIO_ROOT_PASSWORD: minio577715
     ports:
       - "9110:9110"
       - "9111:9111"
@@ -64,7 +63,7 @@ services:
       retries: 3
 
   milvus:
-    image: milvusdb/milvus:latest
+    image: milvusdb/milvus:v2.2.9
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9110
@@ -98,23 +97,31 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - ./.env
     environment:
-      APP_DB_URL: "mysql+asyncmy://${MYSQL_USER:-layra}:${MYSQL_PASSWORD:-layra}@mysql/${MYSQL_DATABASE:-layra}"
-      APP_MONGODB_URL: "mongodb:27017"
-      APP_MONGODB_DB: "chat_mongodb"
-      APP_MONGODB_ROOT_USERNAME: "${MONGODB_ROOT_USERNAME:-testuser}"
-      APP_MONGODB_ROOT_PASSWORD: "${MONGODB_ROOT_PASSWORD:-testpassword}"
-      APP_REDIS_URL: "redis:6379"
-      APP_REDIS_PASSWORD: ""
-      APP_SECRET_KEY: "${APP_SECRET_KEY:-your_secret_key}"
-      APP_ALGORITHM: "HS256"
-      APP_MINIO_URL: "http://minio:9110"
-      APP_MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-minioadmin}"
-      APP_MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-minioadmin}"
-      APP_MINIO_BUCKET_NAME: "ai-chat"
-      APP_MILVUS_URI: "http://milvus:19530"
-      APP_COLBERT_MODEL_PATH: "/app/colqwen2.5-v0.2"
-      APP_USE_API_EMBEDDING: "false"
+      DB_URL: "mysql+asyncmy://mysqluser:mysql577715@mysql/imagedb"
+      MONGODB_URL: "mongodb:27017"
+      MONGODB_DB: "mongodb"
+      MONGODB_ROOT_USERNAME: "mongouser"
+      MONGODB_ROOT_PASSWORD: "mongo577715"
+      REDIS_URL: "redis:6379"
+      REDIS_PASSWORD: "redis577715"
+      SECRET_KEY: "TestCodeForLLMProject"
+      ALGORITHM: "HS256"
+      MINIO_URL: "http://minio:9110"
+      MINIO_ACCESS_KEY: "miniouser"
+      MINIO_SECRET_KEY: "minio577715"
+      MINIO_BUCKET_NAME: "ai-chat"
+      MILVUS_URI: "http://milvus:19530"
+      # OpenRouter配置 - API密钥从.env文件读取
+      USE_API_EMBEDDING: "true"
+      EMBEDDING_API_URL: "https://openrouter.ai/api/v1"
+      EMBEDDING_MODEL_NAME: "openai/text-embedding-3-large"
+      IMAGE_EMBEDDING_MODEL_NAME: "openai/gpt-4o"
+      # 以下为可选配置，不设置则不发送站点信息
+      # SITE_URL: "https://your-website.com"
+      # SITE_NAME: "Your App Name"
     depends_on:
       mysql:
         condition: service_healthy
@@ -133,9 +140,8 @@ services:
       context: .
       dockerfile: Dockerfile
     command: ["python", "model_server.py"]
-    environment:
-      APP_COLBERT_MODEL_PATH: "/app/colqwen2.5-v0.2"
-      APP_USE_API_EMBEDDING: "false"
+    env_file:
+      - ./.env
     depends_on:
       - backend
 

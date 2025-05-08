@@ -307,42 +307,119 @@ npm run dev
 
 # 环境变量配置
 
-为了正确配置和运行应用程序，请在项目根目录创建一个 `.env` 文件并设置以下环境变量：
+为了正确配置和运行应用程序，请在项目根目录创建一个 `.env` 文件并设置以下环境变量。您可以复制 `env.example` 文件作为起点：
+
+```bash
+# 复制示例环境变量文件
+cp env.example .env
+
+# 然后编辑 .env 文件，设置您的实际值
+vim .env
+```
+
+环境变量说明：
 
 ```
+# 基础配置
+MAX_WORKERS=10
+LOG_LEVEL=INFO
+LOG_FILE=layra.log
+DEBUG_MODE=true
+
 # 数据库配置
-APP_DB_URL="mysql+asyncmy://username:password@localhost/dbname"
-APP_MONGODB_URL="localhost:27017"
-APP_MONGODB_DB="chat_mongodb"
-APP_MONGODB_ROOT_USERNAME="testuser"
-APP_MONGODB_ROOT_PASSWORD="testpassword"
+DB_URL=mysql+asyncmy://mysqluser:mysql577715@localhost/imagedb
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=20
+
+# MongoDB配置
+MONGODB_URL=localhost:27017
+MONGODB_DB=mongodb
+MONGODB_ROOT_USERNAME=mongouser
+MONGODB_ROOT_PASSWORD=mongo577715
+MONGODB_POOL_SIZE=100
+MONGODB_MIN_POOL_SIZE=10
 
 # Redis配置
-APP_REDIS_URL="localhost:6379"
-APP_REDIS_PASSWORD="redisdspw"
+REDIS_URL=localhost:6379
+REDIS_PASSWORD=redis577715
+REDIS_TOKEN_DB=0
+REDIS_TASK_DB=1
+REDIS_LOCK_DB=2
 
 # JWT 配置
-APP_SECRET_KEY="your_secret_key"
-APP_ALGORITHM="HS256"
+SECRET_KEY=TestCodeForLLMProject
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=36000
 
 # MinIO 配置
-APP_MINIO_URL="http://localhost:9110"
-APP_MINIO_ACCESS_KEY="your_access_key"
-APP_MINIO_SECRET_KEY="your_secret_key"
-APP_MINIO_BUCKET_NAME="ai-chat"
+MINIO_URL=http://127.0.0.1:9110
+MINIO_ACCESS_KEY=miniouser
+MINIO_SECRET_KEY=minio577715
+MINIO_BUCKET_NAME=ai-chat
 
 # Milvus 配置
-APP_MILVUS_URI="http://127.0.0.1:19530"
+MILVUS_URI=http://127.0.0.1:19530
 
-# 本地模型路径 (仅在本地模型模式下使用)
-APP_COLBERT_MODEL_PATH="/path/to/your/local/model"
+# Kafka配置
+KAFKA_BROKER_URL=localhost:9094
+KAFKA_TOPIC=task_generation
+KAFKA_GROUP_ID=task_consumer_group
 
-# API 嵌入服务配置 (仅在API模式下使用)
-APP_USE_API_EMBEDDING="true"  # 设置为true启用API模式，false使用本地模型
-APP_EMBEDDING_API_URL="https://api.your-embedding-service.com"  # API服务URL
-APP_EMBEDDING_API_KEY="your-api-key"  # API密钥
-APP_EMBEDDING_MODEL_NAME="text-embedding-model"  # 文本嵌入模型名称
-APP_IMAGE_EMBEDDING_MODEL_NAME="image-embedding-model"  # 图像嵌入模型名称
+# 本地模型路径 (仅在USE_API_EMBEDDING=false时使用)
+COLBERT_MODEL_PATH=/home/liwei/ai/colqwen2.5-v0.2
+
+# API 嵌入服务配置 (仅在USE_API_EMBEDDING=true时使用)
+USE_API_EMBEDDING=true
+EMBEDDING_API_URL=https://openrouter.ai/api/v1
+EMBEDDING_API_KEY=your-api-key
+EMBEDDING_MODEL_NAME=openai/text-embedding-3-large
+IMAGE_EMBEDDING_MODEL_NAME=openai/gpt-4o
+SITE_URL=https://layra.app
+SITE_NAME=LAYRA Document RAG
 ```
 
-请根据您的实际环境替换上述值。
+## 注意事项
+
+1. **Docker Compose 部署**：
+   - 当使用 Docker Compose 部署时，上述环境变量会通过 `.env` 文件自动加载
+   - 无需在 docker-compose.yml 中重复配置相同的环境变量
+
+2. **本地/API模式切换**：
+   - 设置 `USE_API_EMBEDDING=true` 启用API嵌入服务模式
+   - 设置 `USE_API_EMBEDDING=false` 使用本地模型模式
+   - 切换模式后需要重启服务
+
+3. **API密钥安全**：
+   - 请勿将包含真实API密钥的.env文件提交到版本控制系统
+   - 在生产环境中，建议使用密钥管理服务保护API密钥
+   
+## OpenRouter API配置说明
+
+本项目使用[OpenRouter](https://openrouter.ai/)提供的聚合API服务来生成嵌入向量。OpenRouter允许通过单一API接口访问多种大模型，包括文本嵌入和图像处理模型。
+
+### 模型配置选项
+
+1. **文本嵌入模型** (`EMBEDDING_MODEL_NAME`):
+   - 推荐使用: `openai/text-embedding-3-large`
+   - 其他选项: `openai/text-embedding-ada-002`
+
+2. **图像嵌入模型** (`IMAGE_EMBEDDING_MODEL_NAME`):
+   - 推荐使用: `openai/gpt-4o` (支持图像处理)
+   - 其他选项: `anthropic/claude-3-opus` (如果需要高质量图像理解)
+
+OpenRouter提供的所有可用模型列表可以在[OpenRouter模型页面](https://openrouter.ai/models)查看。
+
+### 获取API密钥
+
+1. 访问[OpenRouter](https://openrouter.ai/)官网并注册账号
+2. 在控制面板创建API密钥
+3. 将API密钥复制到您的`.env`文件中的`EMBEDDING_API_KEY`变量
+
+### 站点信息配置（可选）
+
+以下环境变量为可选配置，用于在OpenRouter请求中标识应用来源：
+
+- `SITE_URL`: 您的应用网站URL (例如：https://your-app.com)
+- `SITE_NAME`: 您的应用名称 (例如：My Document RAG)
+
+不设置这些值时，系统将不会在API请求中发送站点信息。如果您希望在OpenRouter排行榜上显示您的应用使用情况，可以配置这些值。
