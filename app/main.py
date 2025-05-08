@@ -2,6 +2,7 @@ import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+import traceback
 
 from app.api import api_router
 from app.core.config import settings
@@ -39,20 +40,66 @@ app.add_middleware(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动事件处理代码可以放在这里
-    # logger.info("FastAPI Started")
-    await mongodb.connect()  # 连接 MongoDB
-    await kafka_producer_manager.start()  # 启动Kafka生产者
-    await async_minio_manager.init_minio()
-    # await kafka_consumer_manager.start()  # 启动Kafka消费者
-    asyncio.create_task(kafka_consumer_manager.consume_messages())  # 启动Kafka消费者
-
+    logger.info("FastAPI Starting...")
+    try:
+        # 按顺序初始化各服务，错误时记录详细日志
+        try:
+            await mongodb.connect()
+            logger.info("MongoDB connected successfully")
+        except Exception as e:
+            logger.error(f"MongoDB connection failed: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        try:
+            await kafka_producer_manager.start()
+            logger.info("Kafka producer started successfully")
+        except Exception as e:
+            logger.error(f"Kafka producer failed to start: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        try:
+            await async_minio_manager.init_minio()
+            logger.info("MinIO initialized successfully")
+        except Exception as e:
+            logger.error(f"MinIO initialization failed: {str(e)}")
+            logger.error(traceback.format_exc())
+            
+        # 暂时注释掉Kafka消费者，降低复杂度
+        # asyncio.create_task(kafka_consumer_manager.consume_messages())
+    except Exception as e:
+        logger.error(f"Error during startup: {str(e)}")
+        logger.error(traceback.format_exc())
+        # 即使出错，也继续运行，避免整个应用崩溃
+        
+    logger.info("FastAPI Started")
     yield
-    # 关闭事件处理代码可以放在这里
-    await kafka_producer_manager.stop()  # 停止Kafka生产者
-    # await kafka_consumer_manager.stop()  # 停止Kafka消费者
-    await mysql.close()  # 关闭 MySQL 连接
-    await mongodb.close()  # 关闭 MongoDB 连接
-    await redis.close()  # 关闭 Redis 连接
+    
+    # 关闭事件处理代码
+    logger.info("FastAPI Shutting down...")
+    try:
+        await kafka_producer_manager.stop()
+        logger.info("Kafka producer stopped")
+    except Exception as e:
+        logger.error(f"Error stopping Kafka producer: {str(e)}")
+    
+    try:
+        await mysql.close()
+        logger.info("MySQL connection closed")
+    except Exception as e:
+        logger.error(f"Error closing MySQL connection: {str(e)}")
+        
+    try:
+        await mongodb.close()
+        logger.info("MongoDB connection closed")
+    except Exception as e:
+        logger.error(f"Error closing MongoDB connection: {str(e)}")
+        
+    try:
+        await redis.close()
+        logger.info("Redis connection closed")
+    except Exception as e:
+        logger.error(f"Error closing Redis connection: {str(e)}")
+        
     logger.info("FastAPI Closed")
 
 
@@ -61,4 +108,4 @@ app.router.lifespan_context = lifespan
 # 路由
 framework.include_router(api_router)
 
-logger.info("FastAPI app started with settings: %s", settings)
+logger.info("FastAPI app configured with settings: %s", settings)

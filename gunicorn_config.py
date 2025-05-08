@@ -21,7 +21,7 @@ dictConfig(
         "handlers": {
             "file": {
                 "level": "INFO",
-                "class": "logging.FileHandler",
+                "class": "logging.handlers.WatchedFileHandler",
                 "filename": settings.log_file,
                 "formatter": "default",
             },

@@ -84,8 +84,17 @@ jobs:
           cat > deploy.sh << EOL
           #!/bin/bash
           cd /opt/layra
+          
+          # 拉取最新镜像
           docker-compose pull
+          
+          # 停止所有容器
           docker-compose down
+          
+          # 清理Kafka数据卷
+          docker volume rm layra_kafka_data layra_zookeeper_data || true
+          
+          # 启动所有服务
           docker-compose up -d
           EOL
           chmod +x deploy.sh
