@@ -85,14 +85,32 @@ jobs:
           #!/bin/bash
           cd /opt/layra
           
+          # 检查.env文件是否存在，并提供建议
+          if [ -f .env ]; then
+            echo "发现.env文件，检查API模式设置..."
+            if grep -q "USE_API_EMBEDDING=" .env; then
+              echo "USE_API_EMBEDDING配置已存在"
+              current_setting=\$(grep "USE_API_EMBEDDING=" .env | cut -d= -f2)
+              if [ "\$current_setting" != "true" ]; then
+                echo "警告: 当前USE_API_EMBEDDING=\$current_setting，建议设置为true以使用API模式"
+                echo "如需修改，请编辑.env文件"
+              else
+                echo "当前配置为API模式，推荐设置"
+              fi
+            else
+              echo "警告: 未找到USE_API_EMBEDDING配置，建议添加USE_API_EMBEDDING=true到.env文件"
+              echo "如需添加，请编辑.env文件"
+            fi
+          else
+            echo "警告: 未找到.env文件，请创建.env文件并添加必要的配置"
+            echo "推荐设置USE_API_EMBEDDING=true以使用API模式"
+          fi
+          
           # 拉取最新镜像
           docker-compose pull
           
           # 停止所有容器
-          docker-compose down
-          
-          # 清理Kafka数据卷
-          docker volume rm layra_kafka_data layra_zookeeper_data
+          docker-compose down -v
           
           # 启动所有服务
           docker-compose up -d
