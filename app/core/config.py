@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     minio_bucket_name: str = "ai-chat"  # 需要上传的桶的名称
     milvus_uri:str ="http://127.0.0.1:19530"
     colbert_model_path:str = "/home/liwei/ai/colqwen2.5-v0.2"
+    
+    # 远程API嵌入相关配置
+    use_api_embedding: bool = False  # 是否使用远程API进行嵌入
+    embedding_api_url: str = "https://openrouter.ai/api/v1"  # API的URL
+    embedding_api_key: str = "my-openrouter-api-key"  # API密钥
+    embedding_model_name: str = "qwen/qwen2.5-vl-32b-instruct"  # 文本嵌入模型名称
+    image_embedding_model_name: str = "qwen/qwen2.5-vl-32b-instruct"  # 图像嵌入模型名称
+    site_url: str = ""  # 可选的站点URL
+    site_name: str = ""  # 可选的站点名称
 
     class Config:
         env_file = ".env"

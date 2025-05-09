@@ -15,6 +15,7 @@ from app.db.redis import redis
 from app.db.miniodb import async_minio_manager
 from app.utils.kafka_producer import kafka_producer_manager
 from app.utils.kafka_consumer import kafka_consumer_manager
+from app.utils.embedding_check import check_embedding_services
 
 # 创建 FastAPIFramework 实例
 framework = FastAPIFramework(debug_mode=settings.debug_mode)
@@ -45,6 +46,16 @@ async def lifespan(app: FastAPI):
     await async_minio_manager.init_minio()
     # await kafka_consumer_manager.start()  # 启动Kafka消费者
     asyncio.create_task(kafka_consumer_manager.consume_messages())  # 启动Kafka消费者
+
+    # 检查嵌入服务可用性
+    embedding_check = await check_embedding_services()
+    logger.info(f"嵌入服务检查: {embedding_check['status']} - {embedding_check['message']}")
+    if embedding_check['status'] == 'error':
+        logger.warning("嵌入服务出现问题，请检查配置和服务状态")
+        if settings.use_api_embedding:
+            logger.warning("远程API嵌入服务不可用，请检查API配置")
+        else:
+            logger.warning("本地嵌入服务不可用，请确保model_server.py已启动")
 
     yield
     # 关闭事件处理代码可以放在这里

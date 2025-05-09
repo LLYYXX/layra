@@ -53,7 +53,7 @@ The first test version is now available for trial, with support for **PDF docume
 ## 🚀 Latest Updates
 
 - **(2025.4.6) First Trial Version Now Available**:  
-  The first testable version of LAYRA has been released! Users can now upload PDF documents, ask questions, and receive layout-aware answers. We’re excited to see how this feature can help with real-world document understanding.
+  The first testable version of LAYRA has been released! Users can now upload PDF documents, ask questions, and receive layout-aware answers. We're excited to see how this feature can help with real-world document understanding.
 
 - **Current Features**:  
   - PDF batch upload and parsing functionality
@@ -113,7 +113,7 @@ You can now explore the first version, which supports PDF uploads and returns qu
 
 ## 🧠 System Architecture
 
-LAYRA’s pipeline is designed for **async-first**, **visual-native**, and **scalable document retrieval and generation**.
+LAYRA's pipeline is designed for **async-first**, **visual-native**, and **scalable document retrieval and generation**.
 
 ### 🔍 Query Flow
 The query goes through embedding → vector retrieval → anser generation:
@@ -139,6 +139,7 @@ PDFs are parsed into images and embedded visually via ColQwen2.5, with metadata 
 | 🔍 **Fast Vector Search** | Powered by Milvus for scalable dense retrieval |
 | 🤖 **Flexible LLM Backend** | Supports Qwen2.5-VL series, and extensible to GPT-4o, Claude 3, etc. |
 | 🌐 **Modern Web UI** | Built with Next.js + Typescript + TailwindCSS + Zustand |
+| 🔄 **API Integration** | Support for remote API embedding alongside local model |
 
 ---
 
@@ -151,7 +152,7 @@ PDFs are parsed into images and embedded visually via ColQwen2.5, with metadata 
 - `FastAPI`, `Kafka`, `Redis`, `MySQL`, `MongoDB`, `MinIO`, `Milvus`
 
 **Models & RAG**:  
-- Embedding: `colqwen2.5-v0.2`  
+- Embedding: `colqwen2.5-v0.2` or `OpenRouter/Custom API`  
 - LLM Serving: `VLM  (Qwen2.5-VL series)`
 
 ---
@@ -171,6 +172,15 @@ vim web/.env.local
 vim gunicorn_config.py
 # Or use default settings
 
+# You can choose to use remote API for embeddings instead of local model
+# Set the following in your .env file
+USE_API_EMBEDDING=true
+EMBEDDING_API_URL=https://your-api-service.com/api/v1
+EMBEDDING_API_KEY=your-api-key
+EMBEDDING_MODEL_NAME=your-text-embedding-model
+IMAGE_EMBEDDING_MODEL_NAME=your-image-embedding-model
+
+# If using local model (default), follow these steps
 # Launch Milvus, Redis, MongoDB, Kafka, and MinIO via Docker Compose.
 cd docker
 sudo docker-compose -f milvus-standalone-docker-compose.yml -f docker-compose.yml up -d
@@ -277,7 +287,7 @@ In the future, we will support multiple deployment methods including Docker, Kub
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to open an issue or pull request if you’d like to contribute.  
+Contributions are welcome! Feel free to open an issue or pull request if you'd like to contribute.  
 We are in the process of creating a CONTRIBUTING.md file, which will provide guidelines for code contributions, issue reporting, and best practices. Stay tuned!
 
 ---

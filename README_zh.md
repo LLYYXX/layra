@@ -136,7 +136,8 @@ PDF 被解析为图像，并通过 ColQwen2.5 进行视觉嵌入，元数据和�
 | ⚙️ **异步文档解析** | 通过 Kafka 进行后台文档处理 |
 | 🔍 **快速向量检索** | 使用 Milvus 提供可扩展的密集向量检索 |
 | 🤖 **灵活的大语言模型后端** | 支持 Qwen2.5-VL 系列，并可扩展至 GPT-4o、Claude 3 等 |
-| 🌐 **现代 Web UI** | 基于 Next.js + TypeScript + TailwindCSS + Zustand 构建 |
+| 🌐 **现代化Web界面**: 基于Next.js + Typescript + TailwindCSS + Zustand构建 |
+| 🔄 **API集成** | 支持远程API嵌入与本地模型并存 |
 
 ---
 
@@ -145,12 +146,12 @@ PDF 被解析为图像，并通过 ColQwen2.5 进行视觉嵌入，元数据和�
 **前端**:  
 - `Next.js`, `TypeScript`, `TailwindCSS`, `Zustand`
 
-**后端**:  
+**后端与基础设施**:  
 - `FastAPI`, `Kafka`, `Redis`, `MySQL`, `MongoDB`, `MinIO`, `Milvus`
 
-**模型底座**:  
-- Embedding: `colqwen2.5-v0.2`  
-- LLM Serving: `VLM  (Qwen2.5-VL series)`
+**模型与RAG**:  
+- 嵌入模型: `colqwen2.5-v0.2` 或 `OpenRouter/自定义API`  
+- LLM服务: `VLM系列 (Qwen2.5-VL系列)`
 
 ---
 
@@ -163,13 +164,22 @@ PDF 被解析为图像，并通过 ColQwen2.5 进行视觉嵌入，元数据和�
 git clone https://github.com/liweiphys/layra.git
 cd layra
 
-# 设置数据库连接参数与 FastAPI 配置
+# 设置数据库和FastAPI环境配置
 vim .env
 vim web/.env.local 
 vim gunicorn_config.py
-# 或者直接使用默认设置
+# 或使用默认设置
 
-# 使用 Docker Compose 启动 Milvus、Redis、MongoDB、Kafka 和 MinIO。
+# 您可以选择使用远程API进行嵌入而不是本地模型
+# 在.env文件中设置以下内容
+USE_API_EMBEDDING=true
+EMBEDDING_API_URL=https://your-api-service.com/api/v1
+EMBEDDING_API_KEY=your-api-key
+EMBEDDING_MODEL_NAME=your-text-embedding-model
+IMAGE_EMBEDDING_MODEL_NAME=your-image-embedding-model
+
+# 如果使用本地模型(默认)，请按照以下步骤操作
+# 通过Docker Compose启动Milvus、Redis、MongoDB、Kafka和MinIO
 cd docker
 sudo docker-compose -f milvus-standalone-docker-compose.yml -f docker-compose.yml up -d
 
