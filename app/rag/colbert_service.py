@@ -12,7 +12,17 @@ import numpy as np
 
 class ColBERTService:
     def __init__(self, model_path):
-        self.device = torch.device(get_torch_device("auto"))
+        # 尝试明确使用GPU
+        print("检查可用GPU数量:", torch.cuda.device_count())
+        if torch.cuda.is_available():
+            print("使用GPU:", torch.cuda.get_device_name(0))
+            self.device = torch.device("cuda:0")
+        else:
+            print("警告: 未找到GPU或CUDA不可用，回退到CPU")
+            self.device = torch.device("cpu")
+        
+        print(f"使用设备: {self.device}")
+        
         self.model = ColQwen2_5.from_pretrained(
             model_path,
             torch_dtype=torch.bfloat16,
@@ -21,6 +31,8 @@ class ColBERTService:
                 "flash_attention_2" if is_flash_attn_2_available() else None
             ),
         ).eval()
+        print(f"模型已加载到: {next(self.model.parameters()).device}")
+        
         self.processor = cast(
             ColQwen2_5_Processor,
             ColQwen2_5_Processor.from_pretrained(

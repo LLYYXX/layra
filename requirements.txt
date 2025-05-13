@@ -21,9 +21,13 @@ pymilvus==2.5.6
 tqdm==4.67.1
 pillow==11.1.0
 qwen-vl-utils[decord]==0.0.8
-torchvision==0.21.0
 openai==1.66.3
 tenacity==9.0.0
 sse_starlette==2.2.1
 colpali_engine==0.3.9
 #git+https://github.com/illuin-tech/colpali
+
+# 注意: PyTorch CUDA版本安装需要使用特殊的URL，请使用以下命令手动安装:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu123
+# 或者对于CUDA 12.1+版本，可使用:
+# conda install pytorch torchvision torchaudio pytorch-cuda=12.3 -c pytorch -c nvidia
